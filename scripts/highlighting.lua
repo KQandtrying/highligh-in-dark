@@ -25,12 +25,16 @@ local _string, xpcall, package, tostring, print, os, unpack, require, getfenv, s
 local TheInput, TheInputProxy, TheGameService, TheShard, TheNet, FontManager, PostProcessor, TheItems, EnvelopeManager, TheRawImgui, ShadowManager, TheSystemService, TheInventory, MapLayerManager, RoadManager, TheLeaderboards, TheSim = TheInput, TheInputProxy, TheGameService, TheShard, TheNet, FontManager, PostProcessor, TheItems, EnvelopeManager, TheRawImgui, ShadowManager, TheSystemService, TheInventory, MapLayerManager, RoadManager, TheLeaderboards, TheSim
 local IsPrefab, IsWidget, IsBundleWrap = IsPrefab, IsWidget, IsBundleWrap
 
+--extracting time phase may be written in a more suitable file
+local phase = TheWorld.stats.phase
+
 local cooking = require("cooking")
 
 
 local highlightColorKey = "_insight_highlight"
 local fuel_highlighting = nil
 local highlighting_enabled = nil
+local highlighting_night = nil
 
 local world_type = GetWorldType()
 local is_client_host = IsClientHost()
@@ -319,6 +323,17 @@ local function Comparator(held, inst)
 	return nil
 end
 
+--check whether inst is lit 
+local function InLight(inst)
+	if inst.Light and inst.light:IsEnabled() then
+		return true,
+	elseif inst.LightWatcher and inst.LightWatcher:IsInLight() then
+		return true,
+	else
+		return false,
+	end
+end
+
 local function GetContainerRelevance(container_inst)
 	local insight = (IS_DST and localPlayer.replica.insight) or localPlayer.components.insight
 	if not insight then 
@@ -372,6 +387,12 @@ local function EvaluateRelevance(inst, isApplication)
 	return
 	end
 
+	--I'm under the impression that I should evaluate whether an inst should be highlighted in this function
+	if not highlighting_night then
+		if not highlight.Inlight(inst) then
+		return
+	end
+	
 	--push("EvaluateRelevance")
 	if isApplication == nil then
 		error("[Insight Error]: isApplication nil")
@@ -669,12 +690,19 @@ highlighting.SetFuelMatchColor = function(key)
 	mult_colors_to_use[COLOR_TYPES.FUEL] = COLORS_MULT[key]
 end
 
+highlighting.SetNightHighlight = function(key)
+	
+end
+
 highlighting.UpdateSettings = function(context)
 	fuel_highlighting = context.config["fuel_highlighting"]
 	highlighting_enabled = context.config["highlighting"]
-
+	
 	highlighting.SetMatchColor(context.config["highlighting_color"])
 	highlighting.SetFuelMatchColor(context.config["fuel_highlighting_color"])
+	
+	highlighting.SetNightHighlight = context.config["highlighting_night"]
+
 end
 
 highlighting.Activate = function(insight, context)
